@@ -89,7 +89,7 @@ resource "aws_iam_role_policy" "lambda_policy" {
           "logs:CreateLogStream",
           "logs:PutLogEvents"
         ]
-        Resource = "arn:aws:logs:*:*:*"
+        Resource = "${aws_cloudwatch_log_group.lambda_logs.arn}:*"
       },
       {
         Effect = "Allow"
@@ -116,6 +116,17 @@ resource "aws_iam_role_policy" "lambda_policy" {
   })
 }
 
+# CloudWatch Log Group for Lambda
+resource "aws_cloudwatch_log_group" "lambda_logs" {
+  name              = "/aws/lambda/${var.lambda_function_name}"
+  retention_in_days = var.log_retention_days
+
+  tags = {
+    Name        = "${var.lambda_function_name}-logs"
+    Environment = var.environment
+  }
+}
+
 # Lambda function
 resource "aws_lambda_function" "main_function" {
   filename         = "lambda_function.zip"
@@ -139,5 +150,6 @@ resource "aws_lambda_function" "main_function" {
 
   depends_on = [
     aws_iam_role_policy.lambda_policy,
+    aws_cloudwatch_log_group.lambda_logs,
   ]
 }
