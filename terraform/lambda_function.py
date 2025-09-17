@@ -5,16 +5,18 @@ from datetime import datetime
 
 def handler(event, context):
     """
-    Simple Lambda function that demonstrates interaction with S3 and DynamoDB
+    Simple Lambda function that demonstrates interaction with S3, DynamoDB, and SNS
     """
     
     # Initialize AWS clients
     s3_client = boto3.client('s3')
     dynamodb = boto3.resource('dynamodb')
+    sns_client = boto3.client('sns')
     
     # Get environment variables
     bucket_name = os.environ.get('BUCKET_NAME')
     table_name = os.environ.get('TABLE_NAME')
+    sns_topic_arn = os.environ.get('SNS_TOPIC_ARN')
     
     try:
         # Get DynamoDB table
@@ -46,6 +48,20 @@ def handler(event, context):
             Key=f'lambda-logs/{record_id}.json',
             Body=json.dumps(file_content),
             ContentType='application/json'
+        )
+        
+        # Send SNS notification
+        message = {
+            'default': f'Lambda execution successful at {timestamp}',
+            'record_id': record_id,
+            'timestamp': timestamp,
+            's3_key': f'lambda-logs/{record_id}.json'
+        }
+        
+        sns_client.publish(
+            TopicArn=sns_topic_arn,
+            Message=json.dumps(message),
+            Subject='Lambda Function Execution Notification'
         )
         
         # Return success response

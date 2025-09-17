@@ -33,3 +33,15 @@ variable "log_retention_days" {
   type        = number
   default     = 14
 }
+
+variable "sns_topic_name" {
+  description = "Name of the SNS topic"
+  type        = string
+  default     = "my-demo-notifications"
+}
+
+variable "notification_email" {
+  description = "Email address for SNS notifications (leave empty to skip email subscription)"
+  type        = string
+  default     = ""
+}

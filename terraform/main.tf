@@ -111,9 +111,34 @@ resource "aws_iam_role_policy" "lambda_policy" {
           "dynamodb:Query"
         ]
         Resource = aws_dynamodb_table.main_table.arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "sns:Publish"
+        ]
+        Resource = aws_sns_topic.main_topic.arn
       }
     ]
   })
+}
+
+# SNS Topic
+resource "aws_sns_topic" "main_topic" {
+  name = var.sns_topic_name
+
+  tags = {
+    Name        = var.sns_topic_name
+    Environment = var.environment
+  }
+}
+
+# SNS Topic Subscription (Email)
+resource "aws_sns_topic_subscription" "email_notification" {
+  count     = var.notification_email != "" ? 1 : 0
+  topic_arn = aws_sns_topic.main_topic.arn
+  protocol  = "email"
+  endpoint  = var.notification_email
 }
 
 # CloudWatch Log Group for Lambda
@@ -140,6 +165,7 @@ resource "aws_lambda_function" "main_function" {
     variables = {
       BUCKET_NAME = aws_s3_bucket.main_bucket.bucket
       TABLE_NAME  = aws_dynamodb_table.main_table.name
+      SNS_TOPIC_ARN = aws_sns_topic.main_topic.arn
     }
   }
 
