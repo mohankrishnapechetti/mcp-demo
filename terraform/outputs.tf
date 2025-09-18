@@ -107,3 +107,45 @@ output "website_url" {
   description = "URL to access the website on EC2"
   value       = "http://${aws_instance.main_instance.public_dns}"
 }
+
+# Backend Services Outputs
+output "api_gateway_url" {
+  description = "API Gateway URL"
+  value       = "https://${aws_api_gateway_rest_api.notification_api.id}.execute-api.${var.aws_region}.amazonaws.com/${var.api_gateway_stage_name}"
+}
+
+output "notification_lambda_arn" {
+  description = "ARN of the notification Lambda function"
+  value       = aws_lambda_function.notification_lambda.arn
+}
+
+output "push_lambda_arn" {
+  description = "ARN of the push Lambda function"
+  value       = aws_lambda_function.push_lambda.arn
+}
+
+output "push_queue_url" {
+  description = "URL of the push SQS queue"
+  value       = aws_sqs_queue.push_queue.url
+}
+
+output "notifications_table_name" {
+  description = "Name of the notifications DynamoDB table"
+  value       = aws_dynamodb_table.notifications_table.name
+}
+
+output "api_gateway_endpoint" {
+  description = "API Gateway notification endpoint"
+  value       = "https://${aws_api_gateway_rest_api.notification_api.id}.execute-api.${var.aws_region}.amazonaws.com/${var.api_gateway_stage_name}/notification"
+}
+
+# CloudWatch Alarms Outputs
+output "alarm_topic_arn" {
+  description = "ARN of the alarm SNS topic"
+  value       = aws_sns_topic.alarm_topic.arn
+}
+
+output "cloudwatch_dashboard_url" {
+  description = "URL of the CloudWatch dashboard"
+  value       = "https://${var.aws_region}.console.aws.amazon.com/cloudwatch/home?region=${var.aws_region}#dashboards:name=${var.environment}-infrastructure-dashboard"
+}
