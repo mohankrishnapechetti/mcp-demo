@@ -27,3 +27,27 @@ variable "lambda_function_name" {
   type        = string
   default     = "my-demo-function"
 }
+
+variable "log_retention_days" {
+  description = "CloudWatch log retention in days"
+  type        = number
+  default     = 14
+}
+
+variable "sns_topic_name" {
+  description = "Name of the SNS topic"
+  type        = string
+  default     = "my-demo-notifications"
+}
+
+variable "notification_email" {
+  description = "Email address for SNS notifications (leave empty to skip email subscription)"
+  type        = string
+  default     = ""
+}
+
+variable "sqs_queue_name" {
+  description = "Name of the SQS queue"
+  type        = string
+  default     = "my-demo-queue"
+}

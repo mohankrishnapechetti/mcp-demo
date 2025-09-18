@@ -32,3 +32,43 @@ output "lambda_invoke_arn" {
   description = "Invoke ARN of the Lambda function"
   value       = aws_lambda_function.main_function.invoke_arn
 }
+
+output "cloudwatch_log_group_name" {
+  description = "Name of the CloudWatch log group"
+  value       = aws_cloudwatch_log_group.lambda_logs.name
+}
+
+output "cloudwatch_log_group_arn" {
+  description = "ARN of the CloudWatch log group"
+  value       = aws_cloudwatch_log_group.lambda_logs.arn
+}
+
+output "sns_topic_name" {
+  description = "Name of the SNS topic"
+  value       = aws_sns_topic.main_topic.name
+}
+
+output "sns_topic_arn" {
+  description = "ARN of the SNS topic"
+  value       = aws_sns_topic.main_topic.arn
+}
+
+output "sqs_queue_name" {
+  description = "Name of the SQS queue"
+  value       = aws_sqs_queue.main_queue.name
+}
+
+output "sqs_queue_arn" {
+  description = "ARN of the SQS queue"
+  value       = aws_sqs_queue.main_queue.arn
+}
+
+output "sqs_queue_url" {
+  description = "URL of the SQS queue"
+  value       = aws_sqs_queue.main_queue.url
+}
+
+output "sqs_dead_letter_queue_arn" {
+  description = "ARN of the SQS dead letter queue"
+  value       = aws_sqs_queue.dead_letter_queue.arn
+}
