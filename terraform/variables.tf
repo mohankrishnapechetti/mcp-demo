@@ -51,3 +51,9 @@ variable "sqs_queue_name" {
   type        = string
   default     = "my-demo-queue"
 }
+
+variable "api_gateway_stage_name" {
+  description = "API Gateway stage name"
+  type        = string
+  default     = "dev"
+}
