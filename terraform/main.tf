@@ -131,6 +131,14 @@ resource "aws_iam_role_policy" "lambda_policy" {
           aws_sqs_queue.main_queue.arn,
           aws_sqs_queue.dead_letter_queue.arn
         ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ec2:DescribeInstances",
+          "ec2:DescribeInstanceStatus"
+        ]
+        Resource = "*"
       }
     ]
   })
@@ -179,6 +187,151 @@ resource "aws_sqs_queue" "main_queue" {
 
   tags = {
     Name        = var.sqs_queue_name
+    Environment = var.environment
+  }
+}
+
+# VPC
+resource "aws_vpc" "main_vpc" {
+  cidr_block           = var.vpc_cidr
+  enable_dns_hostnames = true
+  enable_dns_support   = true
+
+  tags = {
+    Name        = "${var.environment}-vpc"
+    Environment = var.environment
+  }
+}
+
+# Internet Gateway
+resource "aws_internet_gateway" "main_igw" {
+  vpc_id = aws_vpc.main_vpc.id
+
+  tags = {
+    Name        = "${var.environment}-igw"
+    Environment = var.environment
+  }
+}
+
+# Public Subnet
+resource "aws_subnet" "public_subnet" {
+  vpc_id                  = aws_vpc.main_vpc.id
+  cidr_block              = var.public_subnet_cidr
+  availability_zone       = data.aws_availability_zones.available.names[0]
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name        = "${var.environment}-public-subnet"
+    Environment = var.environment
+  }
+}
+
+# Route Table
+resource "aws_route_table" "public_rt" {
+  vpc_id = aws_vpc.main_vpc.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.main_igw.id
+  }
+
+  tags = {
+    Name        = "${var.environment}-public-rt"
+    Environment = var.environment
+  }
+}
+
+# Route Table Association
+resource "aws_route_table_association" "public_rta" {
+  subnet_id      = aws_subnet.public_subnet.id
+  route_table_id = aws_route_table.public_rt.id
+}
+
+# Data source for availability zones
+data "aws_availability_zones" "available" {
+  state = "available"
+}
+
+# Security Group for EC2
+resource "aws_security_group" "ec2_sg" {
+  name        = "${var.environment}-ec2-sg"
+  description = "Security group for EC2 instance"
+  vpc_id      = aws_vpc.main_vpc.id
+
+  ingress {
+    description = "SSH"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "HTTP"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "HTTPS"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name        = "${var.environment}-ec2-sg"
+    Environment = var.environment
+  }
+}
+
+# Data source for AMI
+data "aws_ami" "amazon_linux" {
+  most_recent = true
+  owners      = ["amazon"]
+
+  filter {
+    name   = "name"
+    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+}
+
+# Key Pair
+resource "aws_key_pair" "ec2_key" {
+  count      = var.create_key_pair ? 1 : 0
+  key_name   = "${var.environment}-ec2-key"
+  public_key = var.public_key
+}
+
+# EC2 Instance
+resource "aws_instance" "main_instance" {
+  ami                    = data.aws_ami.amazon_linux.id
+  instance_type          = var.instance_type
+  key_name               = var.create_key_pair ? aws_key_pair.ec2_key[0].key_name : var.existing_key_name
+  vpc_security_group_ids = [aws_security_group.ec2_sg.id]
+  subnet_id              = aws_subnet.public_subnet.id
+
+  user_data = base64encode(templatefile("${path.module}/user-data.sh", {
+    bucket_name = aws_s3_bucket.main_bucket.bucket
+  }))
+
+  tags = {
+    Name        = "${var.environment}-ec2-instance"
     Environment = var.environment
   }
 }
