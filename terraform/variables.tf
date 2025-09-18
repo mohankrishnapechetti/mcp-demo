@@ -52,8 +52,44 @@ variable "sqs_queue_name" {
   default     = "my-demo-queue"
 }
 
+
 variable "api_gateway_stage_name" {
   description = "API Gateway stage name"
   type        = string
   default     = "dev"
+}
+variable "vpc_cidr" {
+  description = "CIDR block for VPC"
+  type        = string
+  default     = "10.0.0.0/16"
+}
+
+variable "public_subnet_cidr" {
+  description = "CIDR block for public subnet"
+  type        = string
+  default     = "10.0.1.0/24"
+}
+
+variable "instance_type" {
+  description = "EC2 instance type"
+  type        = string
+  default     = "t2.micro"
+}
+
+variable "create_key_pair" {
+  description = "Whether to create a new key pair"
+  type        = bool
+  default     = false
+}
+
+variable "public_key" {
+  description = "Public key for EC2 key pair (required if create_key_pair is true)"
+  type        = string
+  default     = ""
+}
+
+variable "existing_key_name" {
+  description = "Name of existing key pair to use (used if create_key_pair is false)"
+  type        = string
+  default     = ""
 }
