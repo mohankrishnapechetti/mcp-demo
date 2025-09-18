@@ -13,6 +13,7 @@ def handler(event, context):
     dynamodb = boto3.resource('dynamodb')
     sns_client = boto3.client('sns')
     sqs_client = boto3.client('sqs')
+    ec2_client = boto3.client('ec2')
     
     # Get environment variables
     bucket_name = os.environ.get('BUCKET_NAME')
@@ -66,6 +67,25 @@ def handler(event, context):
             Subject='Lambda Function Execution Notification'
         )
         
+        # Get EC2 instance information
+        try:
+            ec2_response = ec2_client.describe_instances(
+                Filters=[
+                    {'Name': 'tag:Environment', 'Values': ['dev']},
+                    {'Name': 'instance-state-name', 'Values': ['running']}
+                ]
+            )
+            ec2_info = []
+            for reservation in ec2_response['Reservations']:
+                for instance in reservation['Instances']:
+                    ec2_info.append({
+                        'instance_id': instance['InstanceId'],
+                        'state': instance['State']['Name'],
+                        'public_ip': instance.get('PublicIpAddress', 'N/A')
+                    })
+        except Exception as e:
+            ec2_info = [{'error': str(e)}]
+        
         # Send message to SQS queue
         sqs_message = {
             'record_id': record_id,
@@ -73,7 +93,8 @@ def handler(event, context):
             'action': 'lambda_executed',
             'details': {
                 's3_key': f'lambda-logs/{record_id}.json',
-                'dynamodb_record': record_id
+                'dynamodb_record': record_id,
+                'ec2_instances': ec2_info
             }
         }
         
