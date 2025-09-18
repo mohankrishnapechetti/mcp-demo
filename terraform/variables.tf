@@ -52,6 +52,12 @@ variable "sqs_queue_name" {
   default     = "my-demo-queue"
 }
 
+
+variable "api_gateway_stage_name" {
+  description = "API Gateway stage name"
+  type        = string
+  default     = "dev"
+}
 variable "vpc_cidr" {
   description = "CIDR block for VPC"
   type        = string
