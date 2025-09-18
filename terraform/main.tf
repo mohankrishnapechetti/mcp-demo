@@ -118,6 +118,19 @@ resource "aws_iam_role_policy" "lambda_policy" {
           "sns:Publish"
         ]
         Resource = aws_sns_topic.main_topic.arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "sqs:SendMessage",
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes"
+        ]
+        Resource = [
+          aws_sqs_queue.main_queue.arn,
+          aws_sqs_queue.dead_letter_queue.arn
+        ]
       }
     ]
   })
@@ -139,6 +152,35 @@ resource "aws_sns_topic_subscription" "email_notification" {
   topic_arn = aws_sns_topic.main_topic.arn
   protocol  = "email"
   endpoint  = var.notification_email
+}
+
+# SQS Dead Letter Queue
+resource "aws_sqs_queue" "dead_letter_queue" {
+  name = "${var.sqs_queue_name}-dlq"
+
+  tags = {
+    Name        = "${var.sqs_queue_name}-dlq"
+    Environment = var.environment
+  }
+}
+
+# SQS Main Queue
+resource "aws_sqs_queue" "main_queue" {
+  name                      = var.sqs_queue_name
+  delay_seconds             = 90
+  max_message_size          = 2048
+  message_retention_seconds = 86400
+  receive_wait_time_seconds = 10
+
+  redrive_policy = jsonencode({
+    deadLetterTargetArn = aws_sqs_queue.dead_letter_queue.arn
+    maxReceiveCount     = 4
+  })
+
+  tags = {
+    Name        = var.sqs_queue_name
+    Environment = var.environment
+  }
 }
 
 # CloudWatch Log Group for Lambda
@@ -166,6 +208,7 @@ resource "aws_lambda_function" "main_function" {
       BUCKET_NAME = aws_s3_bucket.main_bucket.bucket
       TABLE_NAME  = aws_dynamodb_table.main_table.name
       SNS_TOPIC_ARN = aws_sns_topic.main_topic.arn
+      SQS_QUEUE_URL = aws_sqs_queue.main_queue.url
     }
   }
 

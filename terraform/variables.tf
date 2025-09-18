@@ -45,3 +45,9 @@ variable "notification_email" {
   type        = string
   default     = ""
 }
+
+variable "sqs_queue_name" {
+  description = "Name of the SQS queue"
+  type        = string
+  default     = "my-demo-queue"
+}
