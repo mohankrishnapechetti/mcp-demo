@@ -93,3 +93,24 @@ variable "existing_key_name" {
   type        = string
   default     = ""
 }
+
+variable "cloudfront_default_root_object" {
+  description = "Default root object for CloudFront distribution"
+  type        = string
+  default     = "index.html"
+}
+
+variable "cloudfront_price_class" {
+  description = "Price class for CloudFront distribution"
+  type        = string
+  default     = "PriceClass_100"
+  
+  validation {
+    condition = contains([
+      "PriceClass_All",
+      "PriceClass_200", 
+      "PriceClass_100"
+    ], var.cloudfront_price_class)
+    error_message = "Price class must be one of: PriceClass_All, PriceClass_200, PriceClass_100."
+  }
+}
