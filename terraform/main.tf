@@ -375,3 +375,98 @@ resource "aws_lambda_function" "main_function" {
     aws_cloudwatch_log_group.lambda_logs,
   ]
 }
+
+# S3 Bucket Public Access Block
+resource "aws_s3_bucket_public_access_block" "main_bucket_pab" {
+  bucket = aws_s3_bucket.main_bucket.id
+
+  block_public_acls       = false
+  block_public_policy     = false
+  ignore_public_acls      = false
+  restrict_public_buckets = false
+}
+
+# S3 Bucket Policy for CloudFront
+resource "aws_s3_bucket_policy" "main_bucket_policy" {
+  bucket = aws_s3_bucket.main_bucket.id
+  depends_on = [aws_s3_bucket_public_access_block.main_bucket_pab]
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "AllowCloudFrontServicePrincipal"
+        Effect    = "Allow"
+        Principal = {
+          Service = "cloudfront.amazonaws.com"
+        }
+        Action   = "s3:GetObject"
+        Resource = "${aws_s3_bucket.main_bucket.arn}/*"
+        Condition = {
+          StringEquals = {
+            "AWS:SourceArn" = aws_cloudfront_distribution.s3_distribution.arn
+          }
+        }
+      }
+    ]
+  })
+}
+
+# CloudFront Origin Access Control
+resource "aws_cloudfront_origin_access_control" "s3_oac" {
+  name                              = "${var.environment}-s3-oac"
+  description                       = "OAC for S3 bucket"
+  origin_access_control_origin_type = "s3"
+  signing_behavior                  = "always"
+  signing_protocol                  = "sigv4"
+}
+
+# CloudFront Distribution
+resource "aws_cloudfront_distribution" "s3_distribution" {
+  origin {
+    domain_name              = aws_s3_bucket.main_bucket.bucket_regional_domain_name
+    origin_access_control_id = aws_cloudfront_origin_access_control.s3_oac.id
+    origin_id                = "S3-${aws_s3_bucket.main_bucket.bucket}"
+  }
+
+  enabled             = true
+  is_ipv6_enabled     = true
+  comment             = "CloudFront distribution for ${var.bucket_name}"
+  default_root_object = var.cloudfront_default_root_object
+
+  default_cache_behavior {
+    allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods   = ["GET", "HEAD"]
+    target_origin_id = "S3-${aws_s3_bucket.main_bucket.bucket}"
+
+    forwarded_values {
+      query_string = false
+
+      cookies {
+        forward = "none"
+      }
+    }
+
+    viewer_protocol_policy = "redirect-to-https"
+    min_ttl                = 0
+    default_ttl            = 3600
+    max_ttl                = 86400
+  }
+
+  price_class = var.cloudfront_price_class
+
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
+    }
+  }
+
+  viewer_certificate {
+    cloudfront_default_certificate = true
+  }
+
+  tags = {
+    Name        = "${var.environment}-cloudfront-distribution"
+    Environment = var.environment
+  }
+}
